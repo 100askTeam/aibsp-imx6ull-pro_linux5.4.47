@@ -1,0 +1,12 @@
+uuu_version 1.4.193
+# UUU script for Way-2 (U-Boot recovery fastboot mode).
+# Use after target enters "fastboot 0" in U-Boot.
+#
+# Usage:
+#   uuu -v recovery_fastboot_flash.uuu
+
+FB: ucmd setenv fastboot_dev mmc
+FB: ucmd mmc dev 1
+FB: flash -raw2sparse all sdcard.img
+FB: flash bootloader u-boot-dtb.imx
+FB: done

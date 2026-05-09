@@ -1,0 +1,56 @@
+name: Build for x64 ubuntu
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - uuu*
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  build:
+    name: Build for x64 ubuntu
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-22.04
+          - ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up environment
+        run: sudo DEBIAN_FRONTEND=noninteractive apt-get  --yes --force-yes install libusb-1.0-0-dev libbz2-dev libzstd-dev libtinyxml2-dev
+
+      - name: Build
+        run: |
+          git fetch --tags --force # Retrieve annotated tags. #issue 290
+          if [ "${{ matrix.os }}" == "ubuntu-22.04" ]; then git submodule update --init tinyxml2; cd tinyxml2; cmake .; make; cd ..; fi;
+          if [ "${{ matrix.os }}" == "ubuntu-22.04" ]; then cmake -D 'STATIC=1' -D 'FORCE_OLD=on' . ; else cmake .; fi;
+          make
+
+      - name: Upload Build Artifacts
+        if: matrix.os == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: uuu
+          path: ./uuu/uuu
+
+      - name: Create or Update Release
+        if: matrix.os == 'ubuntu-22.04' && github.ref_type == 'tag'
+        uses: ncipollo/release-action@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          tag: ${{ github.ref_name }}
+          commit: ${{ github.sha }}
+          allowUpdates: true
+          prerelease: true
+          artifacts: "./uuu/uuu"

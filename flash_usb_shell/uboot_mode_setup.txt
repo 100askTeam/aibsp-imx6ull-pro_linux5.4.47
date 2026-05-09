@@ -1,0 +1,15 @@
+# Run once in U-Boot console to install auto mode switching.
+# Board: i.MX6ULL (mx6ull_14x14_evk_emmc)
+
+setenv bootcmd_normal "${bootcmd}"
+setenv recovery_enter "echo [RECOVERY] enter fastboot; fastboot 0"
+setenv bootcmd "if test \"${reboot_mode}\" = \"usb_sdp\"; then echo [MODE] USB SDP; setenv reboot_mode; saveenv; bmode usb; fi; if test \"${reboot_mode}\" = \"recovery\"; then echo [MODE] U-Boot recovery; setenv reboot_mode; saveenv; run recovery_enter; fi; run bootcmd_normal"
+setenv reboot_to_usb_sdp "setenv reboot_mode usb_sdp; saveenv; reset"
+setenv reboot_to_recovery "setenv reboot_mode recovery; saveenv; reset"
+setenv reboot_to_normal "setenv reboot_mode; saveenv; reset"
+saveenv
+
+# Validation:
+# run reboot_to_usb_sdp
+# run reboot_to_recovery
+# run reboot_to_normal

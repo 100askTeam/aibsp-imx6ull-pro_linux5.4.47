@@ -1,0 +1,5 @@
+# md5, sha256 from https://pypi.org/pypi/gpiod/json
+md5  c9c2fb67d78204896d85a7945314356f  gpiod-2.4.2.tar.gz
+sha256  602aae17ff365bb8e2a30ce65c6bbf2d8e7a7e64bf016e82e4fd4c730ef69ab7  gpiod-2.4.2.tar.gz
+# Locally computed sha256 checksums
+sha256  592987e8510228d546540b84a22444bde98e48d03078d3b2eefcd889bec5ce8c  LICENSE

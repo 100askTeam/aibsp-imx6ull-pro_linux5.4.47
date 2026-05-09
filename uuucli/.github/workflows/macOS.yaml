@@ -1,0 +1,69 @@
+name: macOS Build
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - uuu*
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  build:
+    name: macOS Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - macos-15
+          - macos-14-intel
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up environment
+        run: brew install libusb pkg-config zstd tinyxml2
+
+      - name: Build
+        run: |
+          git fetch --tags --force # Retrieve annotated tags. #issue 290
+          export PATH="/usr/local/Cellar/pkg-config/0.29.2_3/bin:${PATH}"; pkg-config --list-all; cmake -DOPENSSL_ROOT_DIR=$(brew --prefix)/opt/openssl . ; make
+
+      - name: Rename_x86
+        if: matrix.os == 'macos-14-intel'
+        run: cp uuu/uuu uuu_mac_x86
+
+      - name: Rename_arm
+        if: matrix.os == 'macos-15'
+        run: cp uuu/uuu uuu_mac_arm
+
+      - name: Upload Build Artifacts
+        if: matrix.os == 'macos-14-intel'
+        uses: actions/upload-artifact@v4
+        with:
+          name: uuu_mac_x86
+          path: uuu_mac_x86
+
+      - name: Upload Build Artifacts
+        if: matrix.os == 'macos-15'
+        uses: actions/upload-artifact@v4
+        with:
+          name: uuu_mac_arm
+          path: uuu_mac_arm
+
+      - name: Create or Update Release
+        if: github.ref_type == 'tag'
+        uses: ncipollo/release-action@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          tag: ${{ github.ref_name }}
+          commit: ${{ github.sha }}
+          allowUpdates: true
+          prerelease: true
+          artifacts: "uuu_mac_*"

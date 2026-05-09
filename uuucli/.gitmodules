@@ -1,0 +1,16 @@
+[submodule "libusb"]
+	path = libusb
+	url = https://github.com/libusb/libusb.git
+[submodule "zlib"]
+	path = zlib
+	url = https://github.com/madler/zlib.git
+[submodule "bzip2"]
+	path = bzip2
+	url = git://sourceware.org/git/bzip2.git
+[submodule "zstd"]
+	path = zstd
+	url = https://github.com/facebook/zstd.git
+[submodule "tinyxml2"]
+	path = tinyxml2
+	url = https://github.com/leethomason/tinyxml2.git
+	branch = master

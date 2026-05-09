@@ -1,0 +1,8 @@
+uuu_version 1.4.193
+
+SDP: boot -f u-boot-dtb.imx -scanlimited 0x800000
+FB: ucmd mmc dev 1
+FB: ucmd setenv reboot_mode
+FB: ucmd saveenv
+FB: ucmd reset
+FB: done

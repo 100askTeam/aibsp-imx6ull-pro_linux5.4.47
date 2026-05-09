@@ -1,0 +1,7 @@
+# From https://www.wireshark.org/download/src/all-versions/SIGNATURES-4.4.14.txt
+sha1  41536d8ba1fc977d0832b509af6ea65056c6fe1d  wireshark-4.4.14.tar.xz
+sha256  c9113130bd2b37919fdcf575f710469ce391960baaff31911e3288469e6a8e8d  wireshark-4.4.14.tar.xz
+
+# Locally calculated
+sha256  edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6  COPYING
+sha256  39887d884b6473f5897c915ae8e9497e5bc2c1f6decec2ce820d5fd716d763cc  README.md

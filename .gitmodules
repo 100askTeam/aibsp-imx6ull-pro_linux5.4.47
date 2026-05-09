@@ -1,0 +1,6 @@
+[submodule "uboot-imx"]
+	path = uboot-imx
+	url = https://gitee.com/weidongshan/uboot-imx.git
+[submodule "linux-imx"]
+	path = linux-imx
+	url = https://gitee.com/weidongshan/linux-imx.git

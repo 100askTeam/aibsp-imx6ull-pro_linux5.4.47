@@ -1,0 +1,13 @@
+# Build outputs
+buildroot-2026.02.1/output/
+buildroot-2026.02.1/dl/
+
+# UUU local build outputs
+uuucli/build/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE temp
+.DS_Store

@@ -1,0 +1,57 @@
+name: Build pdf document
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - uuu*
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  build:
+    name: Build for pdf
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          repository: nxp-imx/mfgtools.wiki.git
+          path: wiki
+          ref: master
+
+      - name: Set up environment
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get  --yes --force-yes install asciidoc rename
+
+      - name: Build
+        run: |
+          cd wiki
+          rename -f 's/\.asciidoc$//' *
+          echo "<revhistory>" > UUU-docinfo.xml
+          git log -n25 --reverse --format="format:<revision><revnumber>%h</revnumber><date>%cd</date><authorinitials>%an</authorinitials><revremark>%s</revremark></revision>" >> UUU-docinfo.xml
+          echo "</revhistory>" >> UUU-docinfo.xml
+          a2x -L -a docinfo UUU
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: UUU.pdf
+          path: wiki/UUU.pdf
+
+      - name: Create or Update Release
+        if: github.ref_type == 'tag'
+        uses: ncipollo/release-action@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          tag: ${{ github.ref_name }}
+          commit: ${{ github.sha }}
+          allowUpdates: true
+          prerelease: true
+          artifacts: "wiki/UUU.pdf"

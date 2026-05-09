@@ -1,0 +1,57 @@
+name: Build with VS Studio
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - uuu*
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    strategy:
+      matrix:
+        configuration: ['Debug', 'Release']
+        platform: ['x86', 'x64']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        submodules: true
+
+    - name: Set up Visual Studio
+      uses: microsoft/setup-msbuild@v1.1
+
+    - name: Build static solution
+      run: |
+        git fetch --tags --force # Retrieve annotated tags. #issue 290
+        msbuild /p:Configuration=${{ matrix.configuration }} /p:PlatformToolset=v143 /p:Platform=${{ matrix.platform }} /p:ForceImportBeforeCppTargets=${{ github.workspace }}/libusb.prop msvc/uuu-static-link.sln
+
+    - name: Upload Build Artifacts
+      if: matrix.configuration == 'Release' && matrix.platform == 'x64'
+      uses: actions/upload-artifact@v4
+      with:
+        name: uuu.exe
+        path: msvc/x64/Release/uuu.exe
+
+    - name: Create or Update Release
+      if: matrix.configuration == 'Release' && matrix.platform == 'x64' && github.ref_type == 'tag'
+      uses: ncipollo/release-action@v1
+      with:
+        name: Release ${{ github.ref_name }}
+        tag: ${{ github.ref_name }}
+        commit: ${{ github.sha }}
+        allowUpdates: true
+        prerelease: true
+        artifacts: msvc/x64/Release/uuu.exe
+
+    - name: Build dynamic solution
+      run: msbuild /p:Configuration=${{ matrix.configuration }} /p:PlatformToolset=v143 /p:Platform=${{ matrix.platform }} /p:ForceImportBeforeCppTargets=${{ github.workspace }}/libusb.prop msvc/uuu.sln

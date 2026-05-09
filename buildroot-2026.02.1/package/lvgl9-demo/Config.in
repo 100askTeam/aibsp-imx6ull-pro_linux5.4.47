@@ -1,0 +1,9 @@
+config BR2_PACKAGE_LVGL9_DEMO
+	bool "lvgl9-demo"
+	help
+	  LVGL9 framebuffer preview demo for Linux fbdev/evdev.
+
+	  This package builds a lightweight LVGL9 demo application and
+	  installs it as /usr/bin/lvgl9-demo.
+
+	  https://github.com/lvgl/lvgl

@@ -1,0 +1,198 @@
+name: Multiplatform build of libuuu wrapper python package
+on:
+  push:
+    branches: [master]
+    tags: [uuu*]
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  build-wheels:
+    name: Build libuuu for ${{ matrix.os }} on ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            arch: x86_64
+            cibw_archs: AMD64 x86
+            build_script: .\.github\scripts\build_windows.bat
+          - os: ubuntu-22.04
+            arch: x86_64
+            cibw_archs: x86_64
+            build_script: .github/scripts/build_linux.sh x86_64
+          - os: ubuntu-22.04-arm
+            arch: aarch64
+            cibw_archs: aarch64
+            build_script: .github/scripts/build_linux.sh aarch64
+          - os: macos-latest
+            arch: x86_64
+            cibw_archs: x86_64
+            build_script: .github/scripts/build_macos.sh x86_64
+          - os: macos-latest
+            arch: arm64
+            cibw_archs: arm64
+            build_script: .github/scripts/build_macos.sh arm64
+    
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Set up QEMU
+        if: runner.os == 'Linux' && runner.arch == 'X64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+      
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Validate git versioning (Windows)
+        if: runner.os == 'Windows'
+        run: |
+            $version = git describe --tags --long 2>$null
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "Error: No git tags found. Cannot determine version."
+              Write-Host "Available tags:"
+              git tag -l
+              exit 1
+            }
+            Write-Host "Found version: $version"
+
+      - name: Validate git versioning (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          if ! version=$(git describe --tags --long 2>/dev/null); then
+            echo "Error: No git tags found. Cannot determine version."
+            echo "Available tags:"
+            git tag -l
+            exit 1
+          fi
+          echo "Found version: $version"
+      
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build cibuildwheel
+
+      - name: Build wheels with cibuildwheel
+        run: python -m cibuildwheel ./wrapper --output-dir outputs
+        env:
+          CIBW_BUILD: cp39-*
+          CIBW_ARCHS_LINUX: ${{ matrix.cibw_archs }}
+          CIBW_ARCHS_WINDOWS: ${{ matrix.cibw_archs }}
+          CIBW_ARCHS_MACOS: ${{ matrix.cibw_archs }}
+          CIBW_SKIP: "*-musllinux*"
+          CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux_2_28_x86_64
+          CIBW_MANYLINUX_AARCH64_IMAGE: quay.io/pypa/manylinux_2_28_aarch64
+          CIBW_BEFORE_ALL: ${{ matrix.build_script }}
+          CIBW_REPAIR_WHEEL_COMMAND_LINUX: "auditwheel repair -w {dest_dir} {wheel}"
+          CIBW_TEST_COMMAND: "pytest {project}/wrapper/tests"
+          MACOSX_DEPLOYMENT_TARGET: 11.0
+          CIBW_BUILD_VERBOSITY: 1
+      
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}-${{ matrix.arch }}
+          path: ./outputs/*.whl
+
+      - name: Upload shared libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: libs-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ contains(matrix.os, 'ubuntu') && './outputs/libuuu/lib' || './wrapper/libuuu/lib' }}
+
+  build-sdist:
+    name: Build source distribution of libuuu wrapper
+    runs-on: ubuntu-latest
+    needs: build-wheels
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Download shared libraries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: libs-*
+          path: ./wrapper/libuuu/lib
+          merge-multiple: true
+
+      - name: Print shared libraries
+        run: find ./wrapper/libuuu/lib
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -U build nxp-codecheck colorama setuptools_scm
+
+      - name: Build source distribution
+        working-directory: ./wrapper
+        run: python -m build --sdist 
+
+      - name: Upload source distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist-libuuu
+          path: ./wrapper/dist/*.tar.gz
+      
+      - name: Run codecheck
+        working-directory: ./wrapper
+        run: |
+          codecheck --version
+          codecheck -s
+      
+      - name: Upload reports if codecheck fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-codecheck
+          path: ./wrapper/reports/*
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build-sdist
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    environment:
+      name: pypi
+      url: https://pypi.org/project/libuuu/
+    if: github.ref_type == 'tag'
+    steps:
+      - name: Download all wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
+      - name: Download source distribution
+        uses: actions/download-artifact@v4
+        with:
+          name: sdist-libuuu
+          path: dist
+          merge-multiple: true
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
+          skip-existing: false

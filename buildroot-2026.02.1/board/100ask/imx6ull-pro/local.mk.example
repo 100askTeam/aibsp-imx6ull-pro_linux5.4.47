@@ -1,0 +1,10 @@
+# Copy this file to Buildroot top-level as local.mk for source override.
+# Example:
+#   cp board/100ask/imx6ull-pro/local.mk.example local.mk
+
+LINUX_OVERRIDE_SRCDIR = /home/ubuntu/imx6ull-pro_linux5.4.47/linux-imx
+UBOOT_OVERRIDE_SRCDIR = /home/ubuntu/imx6ull-pro_linux5.4.47/uboot-imx
+
+# Optional: keep .git metadata in rsync copy
+# LINUX_OVERRIDE_SRCDIR_RSYNC_EXCLUSIONS = --include .git
+# UBOOT_OVERRIDE_SRCDIR_RSYNC_EXCLUSIONS = --include .git

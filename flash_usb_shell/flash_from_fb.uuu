@@ -1,0 +1,7 @@
+uuu_version 1.4.193
+
+FB: ucmd setenv fastboot_dev mmc
+FB: ucmd mmc dev 1
+FB: flash -raw2sparse all /home/ubuntu/imx6ull-pro_linux5.4.47/buildroot-2026.02.1/output/images/sdcard.img
+FB: ucmd reset
+FB: done
