@@ -5,9 +5,14 @@
 ## 目录说明
 
 - `serial_core.py`: 串口底层读写会话（打开/关闭/发送命令/读取输出）
+- `serial_pexpect.py`: 交互式串口终端封装（依赖 `picocom` + `pexpect`）
+- `serial_agent/`: 串口高层工作流
+- `serial_agent/discovery.py`: 串口选口与 USB 串口过滤
+- `serial_agent/login_check.py`: Linux 登录和命令校验
+- `serial_agent/uboot.py`: U-Boot 串口打断、重启与升级入口控制
+- `serial_agent_cli.py`: 上层统一串口抽象接口
 - `langchain_tools.py`: LangChain `StructuredTool` 封装
 - `crewai_tools.py`: CrewAI `Tool` 封装
-- `serial_pexpect.py`: 交互式串口终端封装（依赖 `picocom` + `pexpect`）
 - `trae_serial_terminal.py`: 面向 Trae AI 终端的串口 CLI（扫描/参数化连接/输入输出）
 - `example_langchain_agent.py`: LangChain Agent 示例
 - `example_crewai_agent.py`: CrewAI Agent 示例
@@ -16,7 +21,7 @@
 ## 安装依赖
 
 ```bash
-cd /home/ubuntu/T113-tina5v1.2-sdk/tools/serial_agent
+cd /home/ubuntu/imx6ull-pro_linux5.4.47/linux_serial_agent
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -43,12 +48,27 @@ print(sess.run_command("uname -a"))
 sess.close()
 ```
 
+## 统一串口接口
+
+```bash
+python3 linux_serial_agent/serial_agent_cli.py login-check --cmd "uname -a"
+python3 linux_serial_agent/serial_agent_cli.py enter-fastboot --port /dev/ttyACM0
+python3 linux_serial_agent/serial_agent_cli.py enter-usb-sdp --port /dev/ttyACM0
+python3 linux_serial_agent/serial_agent_cli.py uboot-command --port /dev/ttyACM0 --command "printenv bootcmd"
+```
+
+说明：
+- `serial_agent_cli.py` 是上层编排层唯一需要依赖的串口接口。
+- 该接口只处理串口发现、串口登录与 U-Boot 串口控制，不调用 USB 烧录能力。
+- 自动选口默认只优先挑选 `ttyUSB*` / `ttyACM*` 这类外接 USB 串口。
+- 若当前环境只有宿主机自带 `ttyS*`，通常说明 USB 转串口尚未透传到这台 Linux 主机/虚拟机。
+
 ## Trae 终端一键调用
 
 扫描串口：
 
 ```bash
-cd /home/ubuntu/T113-tina5v1.2-sdk/tools/serial_agent
+cd /home/ubuntu/imx6ull-pro_linux5.4.47/linux_serial_agent
 python3 trae_serial_terminal.py scan
 ```
 
@@ -107,7 +127,7 @@ python3 trae_serial_terminal.py terminal-raw \
 编译：
 
 ```bash
-cd /home/ubuntu/T113-tina5v1.2-sdk/tools/serial_agent
+cd /home/ubuntu/imx6ull-pro_linux5.4.47/linux_serial_agent
 go mod tidy
 go build -o trae_serial_terminal_go main.go
 ```

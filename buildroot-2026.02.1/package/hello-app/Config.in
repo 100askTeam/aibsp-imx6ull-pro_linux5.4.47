@@ -1,0 +1,4 @@
+config BR2_PACKAGE_HELLO_APP
+	bool "hello-app"
+	help
+	  Build and install a minimal hello.c sample program.

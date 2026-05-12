@@ -16,8 +16,8 @@ description: "整理 i.MX6ULL U-Boot/Kernel 编译流程。用户需要从零拉
 
 ```bash
 # 建议工作目录
-mkdir -p ~/imx6ull-pro_linux5.4.47
-cd ~/imx6ull-pro_linux5.4.47
+mkdir -p /home/ubuntu/imx6ull-pro_linux5.4.47
+cd /home/ubuntu/imx6ull-pro_linux5.4.47
 
 # U-Boot
 git clone https://gitee.com/weidongshan/uboot-imx
@@ -114,9 +114,16 @@ bootz ${loadaddr} - ${fdt_addr}
 
 - DNS 解析失败：先修复网络/DNS，再执行 `git clone` 或 `apt-get`
 - 旧内核在新汇编器报 `.section ..., #alloc`：需改为 GNU as 新语法（如 `"a"` 或 `"ax"`）
+- 在当前仓库内，优先把这类兼容补丁放入 `buildroot-2026.02.1/board/100ask/imx6ull-pro/patches`
 - 汇编指令不支持（`isb/cpsid/dmb`）：检查工具链版本与编译参数，必要时使用 gcc-9 并追加 `KCFLAGS`
 
-## 7. 验证清单
+## 7. 与当前仓库流程的关系
+
+- 若你是在本仓库内交付系统，优先使用 `buildroot-2026.02.1/configs/100ask_imx6ull-pro_defconfig`
+- 不要把 Buildroot 的 `kernel` / `uboot` 源码改成 `local site` 绝对路径覆盖
+- 应用层变更默认走 `Fastboot`，底层变更默认走 `SDP`
+
+## 8. 验证清单
 
 - U-Boot：`ls -lh u-boot-dtb.imx`
 - Kernel：`ls -lh arch/arm/boot/zImage`

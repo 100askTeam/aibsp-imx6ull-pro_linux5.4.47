@@ -77,7 +77,7 @@ sudo /home/ubuntu/imx6ull-pro_linux5.4.47/uuucli/build/uuu/uuu -v test_mode1_usb
 
 ```bash
 cd /home/ubuntu/imx6ull-pro_linux5.4.47
-./flash_usb_shell/way2_recovery_flash.sh
+CHANGE_SCOPE=package ./board_workflows/flash_fastboot_deploy.sh
 ```
 
 ## 无人值守执行约定
@@ -90,7 +90,8 @@ cd /home/ubuntu/imx6ull-pro_linux5.4.47
 ## 串口自动校验联动
 
 刷写完成后可接：
-- `flash_usb_shell/auto_flash_and_serial.sh`
+- `board_workflows/flash_fastboot_deploy.sh`
+- `board_workflows/flash_sdp_full.sh`
 
 用于自动串口登录并执行健康检查命令。
 
@@ -98,7 +99,7 @@ cd /home/ubuntu/imx6ull-pro_linux5.4.47
 
 - 当前 `imx6ull-pro` 常见登录形态为 `root` 无密码直接进入 `#`。
 - 因此在该主板上，串口验证默认优先走“无密码自动登录/直发命令”路径。
-- 后续 `serial_login_check.py` 将固定支持该分支，避免 `Password:` 等待超时导致误判失败。
+- 若在虚拟机中执行，无论是串口还是 USB 烧录口，都需要先透传到当前 Linux 环境。
 
 ## 现场排障要点（已实测）
 

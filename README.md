@@ -18,16 +18,16 @@
 │  └─ output/images/  -> 产出 u-boot-dtb.imx, zImage, dtb, sdcard.img │
 │                     │                                                 │
 │                     ▼                                                 │
-│ flash_usb_shell                                                      │
-│  ├─ auto_flash_and_serial.sh      (方式1/通用自动化)                 │
-│  ├─ add_pkg_flash_verify.sh       (加包->编译->刷写->串口验证)       │
-│  ├─ way2_recovery_flash.sh        (方式2 Fastboot刷写入口)           │
-│  ├─ *.uuu                         (uuu脚本)                          │
-│  └─ serial_login_check.py         (调用 linux_serial_agent)          │
-│                     │                                                 │
-│                     ▼                                                 │
-│ linux_serial_agent                                                    │
-│  └─ trae_serial_terminal_go + pexpect 封装                           │
+│ board_workflows                                                      │
+│  ├─ auto_flash_and_serial.sh    (通用自动编排入口)                   │
+│  └─ add_pkg_flash_verify.sh     (加包->编译->刷写->验证)             │
+│          │                                     │                      │
+│          │ serial CLI                          │ usb CLI              │
+│          ▼                                     ▼                      │
+│ linux_serial_agent                     flash_usb_shell                │
+│  ├─ serial_agent_cli.py               ├─ usb_flash_cli.py            │
+│  ├─ serial_agent/                     ├─ usb_flash/                  │
+│  └─ trae_serial_terminal_go           └─ *.uuu                       │
 │                     │                                                 │
 │                     ▼                                                 │
 │ uuucli/build/uuu/uuu  <---- USB ---->  i.MX6ULL (SDP/Fastboot)      │
@@ -56,9 +56,9 @@
 - 与 Buildroot 关系：同样由 Buildroot 的 `CUSTOM_GIT` 逻辑取源码构建。
 
 ### 2.4 `linux_serial_agent`
-- 角色：串口自动化基础层。
-- 负责：串口枚举、发命令、自动登录（含 `login:`/`Password:`/直进 shell 场景）。
-- 典型调用方：`flash_usb_shell/serial_login_check.py`。
+- 角色：独立串口能力模块。
+- 负责：串口枚举、参数管理、缓冲收发、U-Boot 串口交互、自动登录校验。
+- 统一接口：`linux_serial_agent/serial_agent_cli.py`。
 
 ### 2.5 `uuucli`
 - 角色：NXP UUU 工具源码与本地构建目录。
@@ -66,9 +66,14 @@
 - 可执行文件：`uuucli/build/uuu/uuu`。
 
 ### 2.6 `flash_usb_shell`
-- 角色：项目烧录与验证编排层（本仓库最常用入口）。
-- 负责：自动进烧录模式、调用 uuu、刷后串口验证、批量流程脚本化。
-- 说明：已替代旧目录 `tools/imx6ull_flash_serial_framework`。
+- 角色：纯 USB 烧录模块。
+- 负责：`uuu` 调用、USB 枚举检测、`.uuu` 脚本执行与进度输出。
+- 统一接口：`flash_usb_shell/usb_flash_cli.py`。
+
+### 2.7 `board_workflows`
+- 角色：上层编排层。
+- 负责：只通过串口 CLI 与 USB CLI 组合原有流程，不嵌入底层协议实现。
+- 兼容入口：原 `flash_usb_shell/*.sh` 保留为薄包装，转发到该目录。
 
 ## 3. 基础使用说明
 
@@ -121,6 +126,14 @@ cd /home/ubuntu/imx6ull-pro_linux5.4.47
 ```
 
 用途：启用包 -> 编译 -> 自动进 fastboot -> 烧录 -> 串口验证。
+
+### 3.6 模块依赖图
+
+- 详见 `MODULE_DEPENDENCY_GRAPH.md`
+- 约束：
+  - `linux_serial_agent` 不调用 USB 烧录接口
+  - `flash_usb_shell` 不依赖串口实现
+  - `board_workflows` 只通过两侧 CLI 抽象接口交互
 
 ## 4. AI 调用操作手册
 
