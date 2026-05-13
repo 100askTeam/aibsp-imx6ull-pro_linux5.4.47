@@ -40,13 +40,15 @@ def _attempt_uboot_command(
     sent_pass = False
     sent_reboot = False
     sent_space = False
+    next_ping = 0.0
     try:
-        for payload in (b"\n", b"\x03\x03\n"):
-            _write_bytes(ser, payload)
-            _log_action("send wakeup bytes")
-            time.sleep(0.2)
         deadline = time.monotonic() + wait_sec
         while time.monotonic() < deadline:
+            now = time.monotonic()
+            if now >= next_ping:
+                _write_bytes(ser, b"\r")
+                _log_action("send wakeup <CR>")
+                next_ping = now + 3.0
             chunk = ser.read(4096)
             if chunk:
                 text = chunk.decode(errors="ignore")
@@ -76,6 +78,8 @@ def _attempt_uboot_command(
                     _log_action(f"detected login prompt -> send {login_user}")
                     _write_line(ser, login_user)
                     sent_user = True
+                    buf = ""
+                    next_ping = time.monotonic() + 1.0
                     time.sleep(0.1)
                     continue
 
@@ -83,6 +87,8 @@ def _attempt_uboot_command(
                     _log_action("detected password prompt -> send password")
                     _write_line(ser, login_password)
                     sent_pass = True
+                    buf = ""
+                    next_ping = time.monotonic() + 1.0
                     time.sleep(0.1)
                     continue
 
@@ -90,6 +96,8 @@ def _attempt_uboot_command(
                     _log_action("detected Linux shell -> send reboot")
                     _write_line(ser, "reboot")
                     sent_reboot = True
+                    buf = ""
+                    next_ping = time.monotonic() + 0.5
                     time.sleep(0.2)
                     continue
             time.sleep(0.02)

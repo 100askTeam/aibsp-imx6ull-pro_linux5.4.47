@@ -2,6 +2,6 @@
 
 int main(void)
 {
-    puts("hello from buildroot hello-app");
+    puts("hello from imx6ull buildroot fastboot demo");
     return 0;
 }
