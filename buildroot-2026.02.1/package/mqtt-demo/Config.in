@@ -1,0 +1,14 @@
+config BR2_PACKAGE_MQTT_DEMO
+	bool "mqtt-demo"
+	depends on BR2_USE_MMU
+	depends on !BR2_STATIC_LIBS
+	select BR2_PACKAGE_MOSQUITTO
+	select BR2_PACKAGE_MOSQUITTO_BROKER
+	help
+	  Build and install a minimal MQTT loopback demo program.
+	  The demo connects to the local mosquitto broker, subscribes
+	  to a topic, publishes a test message, and verifies the
+	  loopback result on the target board.
+
+comment "mqtt-demo needs a toolchain w/ dynamic library"
+	depends on BR2_STATIC_LIBS
