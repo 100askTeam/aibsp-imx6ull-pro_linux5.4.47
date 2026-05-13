@@ -135,11 +135,185 @@ cd /home/ubuntu/imx6ull-pro_linux5.4.47
   - `flash_usb_shell` 不依赖串口实现
   - `board_workflows` 只通过两侧 CLI 抽象接口交互
 
-## 4. AI 调用操作手册
+## 4. 全自动 AI 应用开发架构与流程
+
+本仓库的目标不是只保存源码，而是把“需求 -> 编码 -> 编译 -> 烧录 -> 串口验证 -> 结果反馈”做成 AI 可以连续执行的闭环。用户只需要描述目标应用或系统能力，AI 按固定软件分层调用脚本和工具完成开发、集成和实机验证。
+
+### 4.1 软件架构图
+
+```text
+┌──────────────────────────────────────────────────────────────────────┐
+│                         用户 / 产品需求                              │
+│  例：新增一个串口采集应用、加入 LVGL 界面、修改驱动、刷机后验证       │
+└───────────────────────────────┬──────────────────────────────────────┘
+                                │ 自然语言任务
+                                ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                         AI 开发编排层                                │
+│  - 读取 README / skills / 约定文档                                    │
+│  - 判断任务类型：应用 / RootFS / Kernel / U-Boot / 烧录回归           │
+│  - 生成修改计划并落地代码                                             │
+│  - 选择最小必要验证路径                                               │
+└───────────────┬───────────────────────────────┬──────────────────────┘
+                │                               │
+                ▼                               ▼
+┌──────────────────────────────┐   ┌───────────────────────────────────┐
+│ Buildroot 系统集成层          │   │ 板级自动化工作流层                 │
+│ buildroot-2026.02.1           │   │ board_workflows                    │
+│ - package/<app>/              │   │ - add_pkg_flash_verify.sh          │
+│ - configs/*_defconfig         │   │ - flash_fastboot_deploy.sh         │
+│ - rootfs-overlay/             │   │ - flash_sdp_full.sh                │
+│ - linux-fragment.config       │   │ - select_flash_mode.sh             │
+└───────────────┬──────────────┘   └──────────────┬────────────────────┘
+                │                                 │
+                ▼                                 ▼
+┌──────────────────────────────┐   ┌───────────────────────────────────┐
+│ 源码与镜像产物层              │   │ 设备连接抽象层                     │
+│ - uboot-imx                   │   │ linux_serial_agent                 │
+│ - linux-imx                   │   │ - serial_agent_cli.py              │
+│ - output/images/              │   │ - 自动登录 / U-Boot 抢占 / 命令发送│
+│   u-boot-dtb.imx              │   │ flash_usb_shell                    │
+│   zImage / dtb / sdcard.img   │   │ - usb_flash_cli.py                 │
+└───────────────┬──────────────┘   │ - UUU 脚本生成与执行               │
+                │                  └──────────────┬────────────────────┘
+                └──────────────────┬──────────────┘
+                                   ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                         i.MX6ULL Pro 实机                            │
+│  U-Boot fastboot / ROM SDP / Linux shell / 应用进程 / dmesg / sysfs   │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### 4.2 AI 自动开发闭环
+
+标准闭环建议按下面顺序执行：
+
+1. 明确目标：说明要新增的应用、驱动、服务、UI 或启动行为。
+2. 定位层级：AI 判断改动属于 Buildroot 包、RootFS overlay、Kernel、U-Boot，还是纯脚本流程。
+3. 修改代码：按仓库既有目录和接口实现，不绕过 `board_workflows`、`linux_serial_agent`、`flash_usb_shell` 的抽象边界。
+4. 编译镜像：执行 `make 100ask_imx6ull-pro_defconfig && make -j$(nproc)`。
+5. 选择烧录链路：
+   - 应用、包、RootFS、服务类改动：优先走 Fastboot 开发刷写。
+   - Kernel、DTB、U-Boot、全系统类改动：优先走 SDP 或完整系统刷写。
+6. 实机验证：串口登录后执行明确的检查命令，如 `uname -a`、`ls -l /usr/bin/<app>`、`pidof <app>`、`dmesg | grep <driver>`。
+7. 输出结论：说明改了什么、跑了什么、通过了什么、没有覆盖什么。
+
+### 4.3 常用自动化入口
+
+#### 新增或验证 Buildroot 应用包
+
+```bash
+cd /home/ubuntu/imx6ull-pro_linux5.4.47
+./flash_usb_shell/add_pkg_flash_verify.sh \
+  BR2_PACKAGE_LVGL9_DEMO \
+  "uname -a; ls -l /usr/bin/lvgl9-demo; pidof lvgl9-demo || true"
+```
+
+该入口会完成：
+- 更新 defconfig
+- 编译 Buildroot
+- 自动进入 Fastboot
+- UUU 刷写 eMMC
+- 串口登录执行验证命令
+
+#### 已有镜像的 Fastboot 开发刷写
+
+```bash
+cd /home/ubuntu/imx6ull-pro_linux5.4.47
+SERIAL_PORT=/dev/ttyACM0 \
+CHECK_CMD="uname -a; mount; ps" \
+CHANGE_SCOPE=package \
+./board_workflows/flash_fastboot_deploy.sh
+```
+
+#### 全系统 SDP 刷写与串口验证
+
+```bash
+cd /home/ubuntu/imx6ull-pro_linux5.4.47
+SERIAL_PORT=/dev/ttyACM0 \
+CHECK_CMD="uname -a; dmesg | tail -n 80" \
+CHANGE_SCOPE=system \
+./board_workflows/flash_sdp_full.sh
+```
+
+### 4.4 推荐提问方式
+
+向 AI 提需求时，最好同时给出 5 类信息：目标、修改范围、启动方式、验证命令、输出要求。
+
+通用模板：
+
+```text
+请在 /home/ubuntu/imx6ull-pro_linux5.4.47 完成一个全自动闭环任务：
+目标：<要实现的功能>
+范围：<应用包 / RootFS overlay / Kernel 驱动 / U-Boot / 烧录脚本>
+约束：<不要改哪些模块，是否需要开机自启，是否必须兼容无密码 root>
+验证：<烧录后在串口执行哪些命令判断成功>
+输出：<列出修改文件、编译命令、烧录方式、串口验证结果和风险>
+```
+
+新增应用推荐问法：
+
+```text
+请新增一个 Buildroot 应用 myapp：
+1) 在 package/myapp 下实现源码、Config.in、myapp.mk
+2) 接入 package/Config.in 和 100ask_imx6ull-pro_defconfig
+3) 编译并通过 Fastboot 自动刷写
+4) 串口验证：uname -a; ls -l /usr/bin/myapp; myapp --version || true
+5) 最后输出完整闭环结果
+```
+
+新增开机服务推荐问法：
+
+```text
+请把 myapp 做成开机自启服务：
+1) 添加 rootfs-overlay/etc/init.d/S99myapp
+2) 确认脚本权限为 0755
+3) 重新编译、刷写、串口验证
+4) 验证命令：ls -l /etc/init.d/S99myapp; pidof myapp || true; tail -n 40 /var/log/myapp.log || true
+```
+
+驱动或设备树推荐问法：
+
+```text
+请修改 linux-imx 中的 <driver/dts> 并接入 Buildroot：
+1) 修改源码、Kconfig、Makefile 或 dts
+2) 如需固定内核配置，更新 board/100ask/imx6ull-pro/linux-fragment.config
+3) 编译完整镜像并走系统级烧录
+4) 串口验证：dmesg | grep <关键字>; lsmod; cat /sys/<节点>
+5) 输出失败时的定位建议
+```
+
+### 4.5 结果验收格式
+
+建议要求 AI 最终按下面格式输出，方便复盘：
+
+```text
+结论：通过 / 未通过
+修改文件：
+- <file1>
+- <file2>
+
+执行命令：
+- make 100ask_imx6ull-pro_defconfig
+- make -j<N>
+- <flash command>
+
+实机验证：
+- 串口：/dev/ttyACM0, 115200
+- 登录：root
+- 命令：<CHECK_CMD>
+- 关键输出：<uname / pid / dmesg / ls 结果>
+
+风险与未覆盖：
+- <没有测试的硬件外设或边界>
+- <需要人工确认的现象>
+```
+
+## 5. AI 调用操作手册
 
 下面是建议直接发给 AI 助手的任务模板，按场景给出最简步骤。
 
-### 4.1 编译并烧写系统
+### 5.1 编译并烧写系统
 
 AI 指令模板：
 
@@ -151,7 +325,7 @@ AI 指令模板：
 4) 输出完整执行日志与结论
 ```
 
-### 4.2 新增一个应用程序（Buildroot 包）
+### 5.2 新增一个应用程序（Buildroot 包）
 
 AI 指令模板：
 
@@ -169,7 +343,7 @@ AI 指令模板：
 - 在 defconfig 置 `BR2_PACKAGE_MYAPP=y`
 - `make` 后串口验证可执行文件与功能
 
-### 4.3 新增一个驱动模块（Kernel）
+### 5.3 新增一个驱动模块（Kernel）
 
 AI 指令模板：
 
@@ -187,7 +361,7 @@ AI 指令模板：
 - 重编系统并烧录
 - 用串口跑 `dmesg | grep <driver>`、`lsmod`、功能测试命令
 
-### 4.4 只改 U-Boot 启动/升级逻辑
+### 5.4 只改 U-Boot 启动/升级逻辑
 
 AI 指令模板：
 
@@ -199,7 +373,7 @@ AI 指令模板：
 4) 提供回归风险与回滚建议
 ```
 
-### 4.5 串口自动化回归
+### 5.5 串口自动化回归
 
 AI 指令模板：
 
@@ -211,7 +385,7 @@ AI 指令模板：
 4) 输出失败点与修复建议
 ```
 
-## 5. 维护约定
+## 6. 维护约定
 
 - 路径约定：所有烧录与串口框架脚本统一维护在 `flash_usb_shell`。
 - UUU 路径约定：统一使用 `uuucli/build/uuu/uuu`。
