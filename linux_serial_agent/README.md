@@ -63,6 +63,28 @@ python3 linux_serial_agent/serial_agent_cli.py uboot-command --port /dev/ttyACM0
 - 自动选口默认只优先挑选 `ttyUSB*` / `ttyACM*` 这类外接 USB 串口。
 - 若当前环境只有宿主机自带 `ttyS*`，通常说明 USB 转串口尚未透传到这台 Linux 主机/虚拟机。
 
+## 当前推荐职责划分
+
+- `烧录控制串口`
+  - 负责从 Linux shell 发 `reboot`
+  - 负责抢占 `U-Boot`
+  - 负责进入 `fastboot 0` 或 `bmode usb`
+- `应用调试串口`
+  - 负责观察启动日志
+  - 负责处理 `buildroot login:` 的默认 `root` 登录
+  - 负责在 shell 提示符出现后执行 `which hello; hello` 等验证命令
+
+## 当前默认行为
+
+- `login-check` 在未显式传 `--username` 时：
+  - 会主动发送回车唤醒串口
+  - 若看到 `login:`，默认发送 `root`
+  - 若看到 shell 提示符，直接发送目标验证命令
+  - 串口操作会打印为 `[serial-check] ...`，便于直接观察脚本动作
+- `enter-fastboot` / `enter-usb-sdp`：
+  - 会打印 `[serial-uboot] ...` 动作日志
+  - 包括检测 `login:`、发送 `reboot`、打断 autoboot、执行 U-Boot 命令等关键步骤
+
 ## Trae 终端一键调用
 
 扫描串口：

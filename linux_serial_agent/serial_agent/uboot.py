@@ -20,6 +20,10 @@ def _write_line(ser: serial.Serial, text: str) -> None:
     _write_bytes(ser, text.encode() + b"\r")
 
 
+def _log_action(message: str) -> None:
+    print(f"[serial-uboot] {message}")
+
+
 def _attempt_uboot_command(
     port: str,
     baudrate: int,
@@ -29,7 +33,7 @@ def _attempt_uboot_command(
     login_password: str,
 ) -> tuple[bool, str]:
     active_port = resolve_port(port)
-    print(f"[serial-uboot] selected port: {active_port}")
+    _log_action(f"selected port: {active_port}")
     ser = serial.Serial(active_port, baudrate, timeout=0.15, write_timeout=1)
     buf = ""
     sent_user = False
@@ -37,8 +41,9 @@ def _attempt_uboot_command(
     sent_reboot = False
     sent_space = False
     try:
-        for payload in (b"\n", b"\x03\x03\n", b"reboot\n"):
+        for payload in (b"\n", b"\x03\x03\n"):
             _write_bytes(ser, payload)
+            _log_action("send wakeup bytes")
             time.sleep(0.2)
         deadline = time.monotonic() + wait_sec
         while time.monotonic() < deadline:
@@ -48,15 +53,18 @@ def _attempt_uboot_command(
                 buf = (buf + text)[-50000:]
 
                 if "Hit any key to stop autoboot" in buf and not sent_space:
+                    _log_action("detected autoboot countdown -> send space")
                     _write_bytes(ser, b" ")
                     sent_space = True
                     time.sleep(0.1)
                     continue
 
                 if "=> " in buf:
+                    _log_action("detected U-Boot prompt")
                     _write_bytes(ser, b"\x03\x03\r")
                     time.sleep(0.1)
                     if command:
+                        _log_action(f"send U-Boot command: {command}")
                         _write_line(ser, command)
                         time.sleep(0.2)
                         tail = ser.read(4096)
@@ -65,18 +73,21 @@ def _attempt_uboot_command(
                     return True, buf
 
                 if "login:" in buf and login_user and not sent_user:
+                    _log_action(f"detected login prompt -> send {login_user}")
                     _write_line(ser, login_user)
                     sent_user = True
                     time.sleep(0.1)
                     continue
 
                 if "Password:" in buf and not sent_pass:
+                    _log_action("detected password prompt -> send password")
                     _write_line(ser, login_password)
                     sent_pass = True
                     time.sleep(0.1)
                     continue
 
                 if SHELL_PROMPT_RE.search(buf) and not sent_reboot:
+                    _log_action("detected Linux shell -> send reboot")
                     _write_line(ser, "reboot")
                     sent_reboot = True
                     time.sleep(0.2)

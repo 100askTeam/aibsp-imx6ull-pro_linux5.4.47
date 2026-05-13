@@ -46,6 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
     gen.add_argument('--output', required=True)
     gen.add_argument('--image-name', default='sdcard.img')
     gen.add_argument('--no-reset', action='store_true')
+    gen.add_argument('--no-prepare', action='store_true')
     return parser
 
 
@@ -69,7 +70,14 @@ def main() -> int:
         cwd = args.cwd or None
         return run_uuu_script(args.uuu_bin, args.script, cwd=cwd, allow_reset_disconnect=args.allow_reset_disconnect)
     if args.subcmd == 'write-fastboot-script':
-        print(write_fastboot_script(args.output, image_name=args.image_name, reset=not args.no_reset))
+        print(
+            write_fastboot_script(
+                args.output,
+                image_name=args.image_name,
+                reset=not args.no_reset,
+                prepare_device=not args.no_prepare,
+            )
+        )
         return 0
     parser.error('unsupported command')
     return 2

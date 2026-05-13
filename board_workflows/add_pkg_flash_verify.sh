@@ -6,7 +6,7 @@ BR_DIR="${BR_DIR:-$WORK_DIR/buildroot-2026.02.1}"
 DEFCONFIG="${DEFCONFIG:-$BR_DIR/configs/100ask_imx6ull-pro_defconfig}"
 PKG_SYMBOL="${1:-BR2_PACKAGE_SL}"
 VERIFY_CMD="${2:-uname -a; which sl; TERM=vt100 sl -l >/dev/null 2>&1; echo SL_RC:$?}"
-U_BOOT_DTS_NAME="${U_BOOT_DTS_NAME:-imx6ull-14x14-evk-emmc}"
+U_BOOT_DTS_NAME="${U_BOOT_DTS_NAME:-imx6ull-14x14-evk}"
 JOBS="${JOBS:-$(nproc)}"
 
 log() { echo "[add-pkg-flash-verify] $*"; }

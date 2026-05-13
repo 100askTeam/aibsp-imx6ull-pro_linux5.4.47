@@ -17,7 +17,8 @@ main() {
   log "generate fastboot uuu script"
   python3 "$WORK_DIR/flash_usb_shell/usb_flash_cli.py" write-fastboot-script \
     --output "$IMAGES_DIR/$FASTBOOT_SCRIPT_NAME" \
-    --image-name "$IMAGE_NAME" >/dev/null
+    --image-name "$IMAGE_NAME" \
+    --no-prepare >/dev/null
   log "wait for fastboot USB device"
   sudo python3 "$WORK_DIR/flash_usb_shell/usb_flash_cli.py" --uuu-bin "$UUU_BIN" wait-device --mode fb --wait-sec 0
   log "start fastboot flashing"

@@ -72,13 +72,19 @@ def flash_emmc_all(uuu_bin: str, flash_bin: str, emmc_img: str) -> int:
     return exit_code
 
 
-def write_fastboot_script(output_path: str, image_name: str = 'sdcard.img', reset: bool = True) -> str:
-    lines = [
-        'uuu_version 1.4.193',
-        'FB: ucmd setenv fastboot_dev mmc',
-        'FB: ucmd mmc dev 1',
-        f'FB: flash -raw2sparse all {image_name}',
-    ]
+def write_fastboot_script(
+    output_path: str,
+    image_name: str = 'sdcard.img',
+    reset: bool = True,
+    prepare_device: bool = True,
+) -> str:
+    lines = ['uuu_version 1.4.193']
+    if prepare_device:
+        lines.extend([
+            'FB: ucmd setenv fastboot_dev mmc',
+            'FB: ucmd mmc dev 1',
+        ])
+    lines.append(f'FB: flash -raw2sparse all {image_name}')
     if reset:
         lines.append('FB: ucmd reset')
     lines.append('FB: done')

@@ -24,7 +24,7 @@ IMG=$BR/output/images
 
 关键点：
 - U-Boot: `mx6ull_14x14_evk_emmc`
-- Kernel DTS: 当前 defconfig 为 `imx6ull-14x14-evk-emmc`
+- Kernel DTS: 当前 defconfig 已切回 `imx6ull-14x14-evk`
 - RootFS: `ext4` 变体（Buildroot 输出为 `rootfs.ext2` 链接到 `rootfs.ext4`）
 - 镜像：`sdcard.img`（可直接写入 eMMC 用户区）
 - 源码方式：保持在线仓库引用，不切到本地绝对路径覆盖
@@ -71,10 +71,53 @@ ls -lh $IMG
 重点文件：
 - `u-boot-dtb.imx`
 - `zImage`
-- `imx6ull-14x14-evk-emmc.dtb`（默认）
-- `imx6ull-14x14-evk.dtb`（当前实机推荐）
+- `imx6ull-14x14-evk.dtb`（当前默认且实机推荐）
+- `imx6ull-14x14-evk-emmc.dtb`（保留对比，不作为当前默认）
 - `rootfs.ext2`（链接 `rootfs.ext4`）
 - `sdcard.img`
+
+## 5.1) 应用开发架构图
+
+```text
+Buildroot package/app
+        |
+        v
+100ask_imx6ull-pro_defconfig
+        |
+        v
+make -> output/images/sdcard.img
+        |
+        v
+board_workflows/select_flash_mode.sh
+        |
+        +--> app/package/rootfs/overlay --> Fastboot
+        |
+        +--> kernel/uboot/dtb/system -----> SDP
+```
+
+## 5.2) 应用开发流程图
+
+```text
+新增或修改应用
+      |
+      v
+更新 package/Config.in 与包目录
+      |
+      v
+defconfig 使能 BR2_PACKAGE_xxx
+      |
+      v
+make 100ask_imx6ull-pro_defconfig && make
+      |
+      v
+确认 target/usr/bin/xxx 与 output/images/sdcard.img
+      |
+      v
+若仅应用层变更 -> Fastboot 烧录
+      |
+      v
+串口验证 which xxx; xxx
+```
 
 ## 6) eMMC 烧写（dd 方案）
 
@@ -162,5 +205,5 @@ uuu -V emmc_ums.uuu
 
 - 能进入 U-Boot
 - `mmc list` 能看到 eMMC
-- `zImage` + `imx6ull-14x14-evk-emmc.dtb` 可正常启动
+- `zImage` + `imx6ull-14x14-evk.dtb` 可正常启动
 - 根文件系统可挂载并进入 shell

@@ -32,7 +32,7 @@ enter_sdp() {
     log "skip serial stage, expect board already in sdp"
     return 0
   fi
-  log "request sdp from current Linux/U-Boot serial session"
+  log "strict sdp path: keep watching serial, reboot/intercept U-Boot quickly, then run bmode usb"
   python3 "$WORK_DIR/linux_serial_agent/serial_agent_cli.py" enter-usb-sdp \
     --port "$SERIAL_PORT" \
     --baudrate "$SERIAL_BAUD" \
@@ -60,7 +60,7 @@ main() {
   need_file "$WORK_DIR/flash_usb_shell/flash_sdp_only.sh"
   ensure_scope_is_sdp
   log "scope=$CHANGE_SCOPE -> use sdp full-system flashing"
-  enter_sdp
+  enter_sdp || die "failed to intercept U-Boot for SDP. If the target is hung, cannot reboot, or serial cannot抢占, please do a manual reset and rerun."
   "$WORK_DIR/flash_usb_shell/flash_sdp_only.sh"
   sleep 8
   verify_after_flash
